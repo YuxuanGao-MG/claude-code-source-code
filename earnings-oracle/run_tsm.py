@@ -24,8 +24,8 @@ def build_tsm_data() -> TickerData:
     """Construct TSM data from known market information."""
 
     # --- TSM spot & fundamentals ---
-    spot = 298.50  # approximate close 2026-04-15
-    market_cap = 1_550_000_000_000  # ~$1.55T
+    spot = 375.00  # close 2026-04-15
+    market_cap = 1_950_000_000_000  # ~$1.95T
 
     # --- Historical earnings (last 8 quarters) ---
     # TSM has a strong beat record and has been a large mover during the AI cycle
@@ -94,22 +94,23 @@ def build_tsm_data() -> TickerData:
     ew_expiry = date(2026, 4, 17)
     back_expiry = date(2026, 5, 15)
 
-    # ATM ~300 strike
+    # ATM ~375 strike
+    # Straddle price scaled: 5.7% implied move → 0.85 * straddle / 375 = 0.057 → straddle ≈ $25.15
     earnings_week_snap = OptionsSnapshot(
         expiration=ew_expiry,
         dte=2,  # 2 days to expiry
         chain=pd.DataFrame(),  # would be full chain in live mode
-        atm_strike=300.0,
+        atm_strike=375.0,
         atm_call_iv=0.68,   # elevated pre-earnings
         atm_put_iv=0.65,
-        atm_call_bid=9.70,
-        atm_call_ask=10.20,
-        atm_put_bid=9.90,
-        atm_put_ask=10.40,
-        atm_call_mid=9.95,
-        atm_put_mid=10.15,
-        straddle_mid=20.10,
-        implied_move_pct=0.0572,  # 0.85 * 20.10 / 298.50 ≈ 5.72%
+        atm_call_bid=12.30,
+        atm_call_ask=12.90,
+        atm_put_bid=12.00,
+        atm_put_ask=12.60,
+        atm_call_mid=12.60,
+        atm_put_mid=12.30,
+        straddle_mid=24.90,
+        implied_move_pct=0.0565,  # 0.85 * 24.90 / 375 ≈ 5.65%
         call_put_iv_spread=0.03,  # calls 3 vol pts richer than puts → mild bullish
         total_call_volume=48500,
         total_put_volume=31200,
@@ -118,8 +119,8 @@ def build_tsm_data() -> TickerData:
         put_call_volume_ratio=0.643,  # more call volume
         put_call_oi_ratio=0.784,
         # Skew: 25-delta
-        put_25d_iv=0.72,  # ~95% moneyness put (~285 strike)
-        call_25d_iv=0.61,  # ~105% moneyness call (~315 strike)
+        put_25d_iv=0.72,  # ~95% moneyness put (~356 strike)
+        call_25d_iv=0.61,  # ~105% moneyness call (~394 strike)
         skew=0.11,  # put_25d - call_25d = normal put skew
         risk_reversal=-0.11,
         butterfly=0.005,
@@ -130,17 +131,17 @@ def build_tsm_data() -> TickerData:
         expiration=back_expiry,
         dte=30,
         chain=pd.DataFrame(),
-        atm_strike=300.0,
+        atm_strike=375.0,
         atm_call_iv=0.38,
         atm_put_iv=0.37,
-        atm_call_bid=16.30,
-        atm_call_ask=17.00,
-        atm_put_bid=15.90,
-        atm_put_ask=16.60,
-        atm_call_mid=16.65,
-        atm_put_mid=16.25,
-        straddle_mid=32.90,
-        implied_move_pct=0.094,
+        atm_call_bid=20.40,
+        atm_call_ask=21.30,
+        atm_put_bid=19.80,
+        atm_put_ask=20.70,
+        atm_call_mid=20.85,
+        atm_put_mid=20.25,
+        straddle_mid=41.10,
+        implied_move_pct=0.093,
         call_put_iv_spread=0.01,
         total_call_volume=12000,
         total_put_volume=8500,
@@ -158,9 +159,9 @@ def build_tsm_data() -> TickerData:
     # Dummy price history for HV calculation
     np.random.seed(42)
     dates = pd.bdate_range(end="2026-04-15", periods=252)
-    # TSM ~30% annual vol, starting from ~220 a year ago trending up to ~300
+    # TSM ~30% annual vol, starting from ~275 a year ago trending up to ~375
     returns = np.random.normal(0.0013, 0.019, 252)  # ~30% annualized vol
-    prices = 220 * np.exp(np.cumsum(returns))
+    prices = 275 * np.exp(np.cumsum(returns))
     # Adjust last price to match spot
     prices = prices * (spot / prices[-1])
     hist_1y = pd.DataFrame({
