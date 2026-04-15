@@ -75,23 +75,31 @@ def generate_report(analysis: EarningsAnalysis) -> OracleReport:
         recommendations.append(_rec_long_straddle(analysis, spot, ew_expiry))
     elif analysis.straddle.straddle_verdict == "SELL" and analysis.straddle.straddle_price:
         recommendations.append(_rec_short_iron_condor(analysis, spot, ew_expiry))
+    elif analysis.straddle.straddle_verdict == "AVOID" and analysis.straddle.straddle_price:
+        # Even if straddle is "AVOID", check for outsized move signals
+        if (analysis.iv_signal.term_structure_signal == "extreme_backwardation" or
+                analysis.pattern.is_serial_big_mover):
+            recommendations.append(_rec_long_straddle(analysis, spot, ew_expiry))
 
-    # --- Directional overlay if signal is strong ---
-    if analysis.direction.direction_verdict == "BULLISH" and analysis.direction.confidence >= 0.5:
+    # --- Directional overlay if signal has any lean ---
+    if analysis.direction.direction_verdict in ("BULLISH", "LEAN_BULLISH"):
         recommendations.append(_rec_bull_call_spread(analysis, spot, ew_expiry))
-    elif analysis.direction.direction_verdict == "BEARISH" and analysis.direction.confidence >= 0.5:
+    elif analysis.direction.direction_verdict in ("BEARISH", "LEAN_BEARISH"):
         recommendations.append(_rec_bear_put_spread(analysis, spot, ew_expiry))
 
     # --- IV ramp trade if applicable ---
     if analysis.iv_ramp.ramp_trade_viable:
         recommendations.append(_rec_ramp_scalp(analysis, spot, ew_expiry))
 
-    # --- Leg-out strategy if straddle is a buy ---
-    if analysis.straddle.straddle_verdict == "BUY" and analysis.pattern.is_serial_big_mover:
+    # --- Leg-out strategy if big mover potential ---
+    if analysis.straddle.straddle_verdict in ("BUY", "AVOID") and (
+            analysis.pattern.is_serial_big_mover or
+            analysis.iv_signal.term_structure_signal == "extreme_backwardation"):
         recommendations.append(_rec_straddle_legout(analysis, spot, ew_expiry))
 
-    # --- Lottery ticket if serial big mover ---
-    if analysis.pattern.is_serial_big_mover and analysis.straddle.implied_move_pct:
+    # --- Lottery ticket for fat-tail / serial movers ---
+    if (analysis.pattern.is_serial_big_mover or
+            analysis.iv_signal.term_structure_signal == "extreme_backwardation") and analysis.straddle.implied_move_pct:
         recommendations.append(_rec_lottery_strangle(analysis, spot, ew_expiry))
 
     # Sort by priority

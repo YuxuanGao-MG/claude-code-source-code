@@ -202,20 +202,38 @@ def _analyze_straddle(data: TickerData, ew_snap: OptionsSnapshot | None) -> Stra
         be_upper = data.spot_price + straddle_price
         be_lower = data.spot_price - straddle_price
 
+    # Detect fat-tail / bimodal distribution (some moves way exceed implied)
+    is_fat_tail = False
+    tail_ratio = None
+    history_moves = [abs(r.realized_move_pct) for r in data.earnings_history if r.realized_move_pct is not None]
+    history_implied = [r.implied_move_pct for r in data.earnings_history if r.implied_move_pct is not None and r.realized_move_pct is not None]
+    if len(history_moves) >= 4 and history_implied:
+        sorted_moves = sorted(history_moves, reverse=True)
+        top_quarter = sorted_moves[:max(len(sorted_moves) // 4, 1)]
+        avg_implied = sum(history_implied) / len(history_implied)
+        tail_ratio = sum(top_quarter) / len(top_quarter) / avg_implied if avg_implied > 0 else None
+        if tail_ratio and tail_ratio > 1.5:
+            is_fat_tail = True
+
     # Verdict
     verdict = "AVOID"
     confidence = 0.3
     rationale_parts = []
 
     if vol_ratio is not None:
-        if vol_ratio > 1.2:
+        if vol_ratio > 1.15:
             verdict = "BUY"
-            confidence = min(0.5 + (vol_ratio - 1.2) * 0.5, 0.85)
+            confidence = min(0.5 + (vol_ratio - 1.15) * 0.6, 0.85)
             rationale_parts.append(f"Earnings Vol Ratio {vol_ratio:.2f} -- stock historically exceeds implied move")
         elif vol_ratio < 0.8:
             verdict = "SELL"
             confidence = min(0.5 + (0.8 - vol_ratio) * 0.5, 0.85)
             rationale_parts.append(f"Earnings Vol Ratio {vol_ratio:.2f} -- implied move historically overpriced")
+        elif is_fat_tail:
+            verdict = "BUY"
+            confidence = 0.5
+            rationale_parts.append(f"Earnings Vol Ratio {vol_ratio:.2f} avg but FAT-TAIL distribution detected (top-quarter moves avg {tail_ratio:.1f}x implied)")
+            rationale_parts.append("Bimodal mover: when it moves big, it crushes the straddle cost")
         else:
             verdict = "AVOID"
             rationale_parts.append(f"Earnings Vol Ratio {vol_ratio:.2f} -- fairly priced, no systematic edge")
@@ -353,12 +371,18 @@ def _analyze_direction(data: TickerData, ew_snap: OptionsSnapshot | None) -> Dir
         rationale_parts.append(f"Short interest {data.short_pct_float:.1%} of float (elevated)")
 
     net = bullish_points - bearish_points
-    if net >= 3:
+    if net >= 4:
         verdict = "BULLISH"
-        confidence = min(0.4 + net * 0.08, 0.75)
-    elif net <= -3:
+        confidence = min(0.45 + net * 0.07, 0.75)
+    elif net >= 2:
+        verdict = "LEAN_BULLISH"
+        confidence = min(0.35 + net * 0.06, 0.60)
+    elif net <= -4:
         verdict = "BEARISH"
-        confidence = min(0.4 + abs(net) * 0.08, 0.75)
+        confidence = min(0.45 + abs(net) * 0.07, 0.75)
+    elif net <= -2:
+        verdict = "LEAN_BEARISH"
+        confidence = min(0.35 + abs(net) * 0.06, 0.60)
     else:
         verdict = "NEUTRAL"
         confidence = 0.3
