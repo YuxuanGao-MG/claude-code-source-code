@@ -1,0 +1,53 @@
+# Earnings Oracle - Default Configuration
+
+data:
+  # Days before earnings to start collecting option chain snapshots
+  pre_earnings_window: 30
+  # Days after earnings to track for PnL resolution
+  post_earnings_window: 5
+  # Minimum option open interest filter
+  min_open_interest: 100
+  # Minimum option volume filter
+  min_volume: 50
+
+strategies:
+  vol_crush:
+    # Sell straddle N days before earnings
+    entry_days_before: 2
+    # Close position N days after earnings (0 = hold through expiry)
+    exit_days_after: 1
+    # Max position size as fraction of portfolio
+    max_position_pct: 0.05
+    # Minimum IV rank to trigger entry (0-100)
+    min_iv_rank: 50
+    # Stop loss as multiple of premium collected
+    stop_loss_multiple: 2.0
+
+  straddle_sizing:
+    # Enter when implied move exceeds historical move by this ratio
+    implied_vs_realized_threshold: 1.3
+    # Number of prior earnings to compute historical move
+    lookback_earnings: 8
+    # ATM tolerance for strike selection (fraction of underlying price)
+    atm_tolerance: 0.02
+
+  term_structure:
+    # Min slope difference (front vs. back vol) to trigger trade
+    min_slope_dislocation: 0.05
+    # Target DTE for front leg
+    front_leg_max_dte: 14
+    # Target DTE for back leg
+    back_leg_min_dte: 30
+
+  skew_trading:
+    # Delta range for OTM puts to monitor
+    put_delta_range: [-0.30, -0.15]
+    # Delta range for OTM calls to monitor
+    call_delta_range: [0.15, 0.30]
+    # Min skew z-score vs. historical to trigger trade
+    min_skew_zscore: 2.0
+
+backtesting:
+  initial_capital: 100000
+  commission_per_contract: 0.65
+  slippage_pct: 0.02
