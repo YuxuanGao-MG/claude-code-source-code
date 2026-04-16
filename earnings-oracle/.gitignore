@@ -11,3 +11,4 @@ venv/
 *.csv
 *.pkl
 notebooks/.ipynb_checkpoints/
+*_earnings_distribution.png
