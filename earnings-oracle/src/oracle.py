@@ -4,6 +4,7 @@ Usage:
     python -m src.oracle AAPL
     python -m src.oracle NFLX --earnings-date 2026-04-22
     python -m src.oracle TSLA NVDA META --json
+    python -m src.oracle SNAP --plot
 """
 
 from __future__ import annotations
@@ -16,9 +17,12 @@ from datetime import date
 from .data.collector import collect
 from .analysis.earnings_analyzer import analyze
 from .analysis.recommendation import generate_report, format_report
+from .models.distribution import build_composite_distribution
+from .analysis.plot_distribution import plot_distribution
 
 
-def run(ticker: str, earnings_date: date | None = None, output_json: bool = False) -> str:
+def run(ticker: str, earnings_date: date | None = None, output_json: bool = False,
+        plot: bool = False, plot_output: str | None = None) -> str:
     """Run the full Oracle pipeline for a single ticker.
 
     Returns the formatted report string (or JSON string if output_json=True).
@@ -31,6 +35,40 @@ def run(ticker: str, earnings_date: date | None = None, output_json: bool = Fals
 
     print(f"[Oracle] Generating recommendations for {ticker.upper()}...", file=sys.stderr)
     report = generate_report(analysis)
+
+    # --- Distribution plot ---
+    if plot:
+        print(f"[Oracle] Building probability distribution for {ticker.upper()}...", file=sys.stderr)
+        past_moves = [r.realized_move_pct for r in data.earnings_history if r.realized_move_pct is not None]
+
+        # Extract sentiment signals from the analysis
+        sentiment_score = 0.0
+        options_flow = 0.0
+        if analysis.direction.direction_verdict in ("BULLISH", "LEAN_BULLISH"):
+            sentiment_score = analysis.direction.confidence
+            options_flow = 0.3
+        elif analysis.direction.direction_verdict in ("BEARISH", "LEAN_BEARISH"):
+            sentiment_score = -analysis.direction.confidence
+            options_flow = -0.3
+
+        if analysis.iv_signal.iv_spread_signal == "bullish":
+            options_flow = 0.5
+        elif analysis.iv_signal.iv_spread_signal == "bearish":
+            options_flow = -0.5
+
+        dist = build_composite_distribution(
+            past_moves=past_moves,
+            spot=data.spot_price,
+            implied_move_pct=analysis.straddle.implied_move_pct,
+            straddle_cost_pct=analysis.straddle.straddle_as_pct,
+            sentiment_score=sentiment_score,
+            options_flow_signal=options_flow,
+            ticker=ticker.upper(),
+        )
+
+        out_path = plot_output or f"{ticker.upper()}_earnings_distribution.png"
+        plot_distribution(dist, output_path=out_path)
+        print(f"[Oracle] Distribution plot saved to {out_path}", file=sys.stderr)
 
     if output_json:
         return _report_to_json(report)
@@ -107,6 +145,11 @@ Examples:
         action="store_true",
         help="Output as JSON instead of formatted text",
     )
+    parser.add_argument(
+        "--plot", "-p",
+        action="store_true",
+        help="Generate earnings move probability distribution plot (PNG)",
+    )
 
     args = parser.parse_args()
 
@@ -117,7 +160,8 @@ Examples:
     results = []
     for ticker in args.tickers:
         try:
-            output = run(ticker.upper(), earnings_date=earnings_date, output_json=args.json)
+            output = run(ticker.upper(), earnings_date=earnings_date,
+                         output_json=args.json, plot=args.plot)
             results.append(output)
         except Exception as e:
             print(f"[Oracle] ERROR processing {ticker}: {e}", file=sys.stderr)
