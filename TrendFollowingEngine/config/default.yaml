@@ -1,0 +1,84 @@
+# TrendFollowingEngine — default configuration.
+# All thresholds live here so research and prod stay in lockstep.
+
+universe:
+  # Static seed list of large-cap US tickers used when no constituent file is
+  # available. Replace with a Russell 1000 / S&P 1500 file in prod.
+  seed_list: "config/universe_seed.txt"
+  market_cap_floor_usd: 5_000_000_000
+  median_dollar_volume_floor_usd: 20_000_000
+  price_floor_usd: 5.0
+  exclude_etfs: true
+  exclude_adrs_without_us_listing: true
+
+trigger:
+  # A name is flagged if EITHER of these is true:
+  return_sigma_multiple: 1.5     # |r_today| >= k * sigma_60d
+  return_abs_floor: 0.05         # OR |r_today| >= 5%
+  volume_adv_multiple: 2.5       # OR vol_today >= k * ADV_20d
+  sigma_lookback_days: 60
+  adv_lookback_days: 20
+
+data:
+  cache_dir: "artifacts/cache"
+  history_lookback_days: 400
+  news_lookback_days: 14
+  options_enabled: true
+  social_enabled: false           # off by default; needs a scraper key
+  filings_enabled: true
+  user_agent: "TrendFollowingEngine/0.1 (research; contact: replace-me@example.com)"
+
+features:
+  technical:
+    sma_windows: [10, 20, 50, 200]
+    rsi_window: 14
+    macd: { fast: 12, slow: 26, signal: 9 }
+    bbands: { window: 20, k: 2.0 }
+    realized_vol_windows: [10, 20, 60]
+  options:
+    iv_skew_strikes: [0.9, 1.0, 1.1]   # moneyness multiples on spot
+    term_structure_days: [30, 60, 90]
+  text:
+    headline_max_age_hours: 36
+    novelty_lookback_days: 30
+    use_anthropic_zero_shot: false     # gated by env var ANTHROPIC_API_KEY
+    anthropic_model: "claude-haiku-4-5-20251001"
+    finbert_model: "ProsusAI/finbert"
+
+labeling:
+  primary_horizon_days: 1            # close-to-close
+  primary_basis: "close_to_close"    # or "open_to_close"
+  revaluation_horizon_days: 5
+  revaluation_holdback_fraction: 0.5  # forward 5d move >= 0.5 * day-0 magnitude
+
+model:
+  lightgbm:
+    objective: "binary"
+    learning_rate: 0.04
+    num_leaves: 63
+    min_data_in_leaf: 80
+    feature_fraction: 0.8
+    bagging_fraction: 0.8
+    bagging_freq: 5
+    n_estimators: 600
+    early_stopping_rounds: 40
+  blender:
+    type: "logistic"
+    calibrate: "isotonic"
+
+backtest:
+  start: "2019-01-01"
+  end: "2024-12-31"
+  refit_frequency: "M"             # monthly
+  min_train_years: 3
+  cost_per_side_bps: 5.0
+  slippage_spread_fraction: 0.10
+  long_decile: 9                    # zero-indexed deciles, top
+  short_decile: 0
+  vol_target_annual: 0.10
+  sector_neutralize: true
+  max_weight_per_name: 0.05
+
+logging:
+  level: "INFO"
+  json: false
