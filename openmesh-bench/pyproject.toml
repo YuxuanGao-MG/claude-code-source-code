@@ -7,10 +7,12 @@ dependencies = [
     "openai>=1.50",
     "httpx>=0.27",
     "python-dotenv>=1.0",
+    "huggingface_hub>=0.24",
 ]
 
 [project.scripts]
 openmesh-smoke = "openmesh_bench.smoke:main"
+openmesh-upload = "openmesh_bench.uploader:main"
 
 [build-system]
 requires = ["setuptools>=68"]

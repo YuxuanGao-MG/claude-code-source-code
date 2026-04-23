@@ -30,15 +30,17 @@ class Config:
     max_usd_per_run: float | None
     request_timeout_s: float
     max_retries: int
+    app_url: str | None
+    app_name: str | None
+    hf_token: str | None
+    hf_dataset_repo: str | None
 
 
 def load_config(dotenv_path: str | os.PathLike | None = None) -> Config:
     load_dotenv(dotenv_path=dotenv_path, override=False)
 
-    base_url = os.environ.get("OPENMESH_BASE_URL", "").rstrip("/")
+    base_url = os.environ.get("OPENMESH_BASE_URL", "https://openrouter.ai/api/v1").rstrip("/")
     api_key = os.environ.get("OPENMESH_API_KEY", "")
-    if not base_url:
-        raise RuntimeError("OPENMESH_BASE_URL is not set (see .env.example)")
     if not api_key:
         raise RuntimeError("OPENMESH_API_KEY is not set (see .env.example)")
 
@@ -52,4 +54,8 @@ def load_config(dotenv_path: str | os.PathLike | None = None) -> Config:
         max_usd_per_run=_env_float("OPENMESH_MAX_USD_PER_RUN"),
         request_timeout_s=float(os.environ.get("OPENMESH_REQUEST_TIMEOUT_S", "120")),
         max_retries=int(os.environ.get("OPENMESH_MAX_RETRIES", "3")),
+        app_url=os.environ.get("OPENMESH_APP_URL") or None,
+        app_name=os.environ.get("OPENMESH_APP_NAME") or None,
+        hf_token=os.environ.get("HF_TOKEN") or None,
+        hf_dataset_repo=os.environ.get("HF_DATASET_REPO") or None,
     )

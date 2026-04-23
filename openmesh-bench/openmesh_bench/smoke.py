@@ -51,7 +51,7 @@ def main() -> int:
         r.raise_for_status()
         data = r.json().get("data") or []
         remote_ids = {m["id"] for m in data if isinstance(m, dict) and "id" in m}
-        print(f"[ /models] OpenMesh reports {len(remote_ids)} model ids")
+        print(f"[ /models] upstream reports {len(remote_ids)} model ids ({cfg.base_url})")
     except Exception as e:
         print(f"[ /models] WARN: could not list models ({e}); skipping diff")
         remote_ids = None
@@ -67,8 +67,8 @@ def main() -> int:
             continue
         spec = MODELS[name]
         if remote_ids is not None and spec.openmesh_id not in remote_ids:
-            print(f"[SKIP] {name} ({spec.openmesh_id}): not listed by OpenMesh /models")
-            fail.append((name, "not listed by OpenMesh"))
+            print(f"[SKIP] {name} ({spec.openmesh_id}): not listed by upstream /models")
+            fail.append((name, "not listed upstream"))
             continue
         try:
             with trace_session(f"smoke/{name}"):

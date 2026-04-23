@@ -35,11 +35,17 @@ class TracingClient:
     def __init__(self, config: Config, tracer: Tracer):
         self.config = config
         self.tracer = tracer
+        default_headers: dict[str, str] = {}
+        if config.app_url:
+            default_headers["HTTP-Referer"] = config.app_url
+        if config.app_name:
+            default_headers["X-Title"] = config.app_name
         self._oai = OpenAI(
             base_url=config.base_url,
             api_key=config.api_key,
             timeout=config.request_timeout_s,
             max_retries=0,
+            default_headers=default_headers or None,
         )
         self.chat = _Chat(self)
 
@@ -118,6 +124,7 @@ class TracingClient:
             "cost_usd": cost_usd,
             "attempts": attempts,
             "response_id": result.get("id"),
+            "upstream_provider": result.get("provider"),
             "error": None,
         }
         self.tracer.log_call(row)

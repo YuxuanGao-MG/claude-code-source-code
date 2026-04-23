@@ -2,6 +2,7 @@ from .client import TracingClient
 from .accounting import Tracer, trace_session, current_session, BudgetExceeded
 from .config import Config, load_config
 from .registry import MODELS, ModelSpec
+from .uploader import upload_run
 
 __all__ = [
     "TracingClient",
@@ -13,4 +14,5 @@ __all__ = [
     "load_config",
     "MODELS",
     "ModelSpec",
+    "upload_run",
 ]
