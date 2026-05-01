@@ -1,3 +1,7 @@
 node_modules/
 build-src/
 dist/
+spxw_predictor/artifacts/
+__pycache__/
+*.pyc
+.pytest_cache/
